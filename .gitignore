@@ -1,0 +1,20 @@
+# Xcode user-specific files
+*.xcuserstate
+*.xcuserdatad/
+xcuserdata/
+
+# User schemes
+*.xcscheme
+
+# macOS
+.DS_Store
+
+# Build products
+build/
+DerivedData/
+*.app
+*.zip
+
+# Provisioning profiles
+*.mobileprovision
+*.provisionprofile
