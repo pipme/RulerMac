@@ -2,6 +2,8 @@
 
 A lightweight macOS screen ruler application for measuring distances on your screen in any direction.
 
+![RulerMac measuring screen distance](asset/image.png)
+
 ## Features
 
 - 📏 Measure screen distances in **any direction**
@@ -16,11 +18,9 @@ A lightweight macOS screen ruler application for measuring distances on your scr
 1. Download the latest `RulerMac.dmg` from [Releases](https://github.com/pipme/RulerMac/releases)
 2. Open the DMG file
 3. Drag `RulerMac.app` to your Applications folder
-4. **Important**: Since the app is not signed with an Apple Developer certificate, you need to:
-   - Right-click (or Control-click) on `RulerMac.app`
-   - Select "Open" from the context menu
-   - Click "Open" in the dialog that appears
-   - This only needs to be done once
+4. **Important**: Since the app is not signed with an Apple Developer certificate, you may need to allow it to run:
+    - go to **System Settings** > **Privacy & Security** and click "Open Anyway"
+    - Learn more about [opening apps from unidentified developers](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unknown-developer-mh40616/mac)
 
 ## Usage
 
