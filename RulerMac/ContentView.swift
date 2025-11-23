@@ -14,34 +14,33 @@ enum MeasurementUnit: String, CaseIterable {
     case centimeters = "cm"
 }
 
+enum ActivePoint {
+    case start
+    case end
+}
+
 // Controller to manage state
 class RulerViewController: ObservableObject {
     @Published var units: MeasurementUnit = .pixels
-    var rulerView: RulerOverlayView
-    
-    init() {
-        self.rulerView = RulerOverlayView(controller: nil)
-        self.rulerView.controller = self
-    }
+    @Published var startPoint: CGPoint?
+    @Published var endPoint: CGPoint?
+    @Published var isDrawing = false
+    @Published var activePoint: ActivePoint = .end
+    @Published var snapIncrement: Double = 45.0
     
     func setUnit(_ unit: MeasurementUnit) {
         units = unit
     }
-}
-
-// This view is now for the overlay, not a window
-struct RulerOverlayView: View {
-    @State private var startPoint: CGPoint?
-    @State private var endPoint: CGPoint?
-    @State private var isDrawing = false
-    @State private var isShiftPressed = false
-    weak var controller: RulerViewController?
     
-    init(controller: RulerViewController?) {
-        self.controller = controller
+    func setSnapIncrement(_ increment: Double) {
+        snapIncrement = increment
     }
     
-    func getEndPoint(in size: CGSize) -> CGPoint? {
+    func toggleActivePoint() {
+        activePoint = (activePoint == .start) ? .end : .start
+    }
+    
+    func getEffectiveEndPoint(in size: CGSize, isShiftPressed: Bool) -> CGPoint? {
         guard let start = startPoint, let end = endPoint else { return nil }
         
         if isShiftPressed {
@@ -49,8 +48,9 @@ struct RulerOverlayView: View {
             let dy = end.y - start.y
             let angle = atan2(dy, dx)
             
-            // Snap to 45 degree increments (pi/4)
-            let snapAngle = round(angle / (.pi / 4)) * (.pi / 4)
+            // Snap to user-selected increments (converted to radians)
+            let incrementRad = snapIncrement * .pi / 180.0
+            let snapAngle = round(angle / incrementRad) * incrementRad
             let rawDistance = sqrt(dx*dx + dy*dy)
             
             // Calculate intersection with bounds to maintain angle
@@ -86,6 +86,116 @@ struct RulerOverlayView: View {
         }
         return end
     }
+    
+    func nudgeEndPoint(dx: CGFloat, dy: CGFloat, in size: CGSize, isShiftPressed: Bool) {
+        guard let start = startPoint, let currentEnd = endPoint else { return }
+        
+        var newPoint: CGPoint
+        
+        if isShiftPressed {
+            // Constrained Nudge: Move only along the snapped line
+            let vectorX = currentEnd.x - start.x
+            let vectorY = currentEnd.y - start.y
+            let angle = atan2(vectorY, vectorX)
+            
+            let incrementRad = snapIncrement * .pi / 180.0
+            let snapAngle = round(angle / incrementRad) * incrementRad
+            
+            // Unit vector for the snapped angle
+            let uX = cos(snapAngle)
+            let uY = sin(snapAngle)
+            
+            // Project the input nudge (dx, dy) onto the unit vector
+            // Dot product determines how much to move along the line
+            // We use a minimum threshold to ensure movement if the user intends it
+            let projection = dx * uX + dy * uY
+            
+            // If projection is significant, apply it along the vector
+            // If it's 0 (perpendicular), we don't move, which is correct for a constraint
+            
+            // However, to be user friendly, if the user presses a key that is "mostly" in the direction,
+            // we should move. The dot product handles this naturally.
+            // But for 45 degrees, pressing Right (1,0) gives 0.707 projection.
+            // We might want to scale it back up so 1 key press = 1 unit of distance roughly.
+            
+            let moveAmount = projection
+            
+            // Apply movement along the snapped vector
+            newPoint = CGPoint(
+                x: currentEnd.x + moveAmount * uX,
+                y: currentEnd.y + moveAmount * uY
+            )
+            
+            // If the point didn't move (perpendicular key press), try to be smart?
+            // No, strict constraint is less confusing. "Up" on a horizontal line should do nothing.
+            
+        } else {
+            // Free Nudge
+            newPoint = CGPoint(x: currentEnd.x + dx, y: currentEnd.y + dy)
+        }
+        
+        // Clamp to screen
+        endPoint = CGPoint(
+            x: max(0, min(newPoint.x, size.width)),
+            y: max(0, min(newPoint.y, size.height))
+        )
+    }
+    
+    func nudgeStartPoint(dx: CGFloat, dy: CGFloat, in size: CGSize, isShiftPressed: Bool) {
+        guard let currentStart = startPoint, let end = endPoint else { return }
+        
+        var newPoint: CGPoint
+        
+        if isShiftPressed {
+            // Constrained Nudge for Start Point
+            // Moving start point changes the vector origin, but we want to maintain the angle relative to End Point?
+            // Or just move the start point along the line?
+            // Let's move along the line to keep the angle constant.
+            
+            let vectorX = end.x - currentStart.x
+            let vectorY = end.y - currentStart.y
+            let angle = atan2(vectorY, vectorX)
+            
+            let incrementRad = snapIncrement * .pi / 180.0
+            let snapAngle = round(angle / incrementRad) * incrementRad
+            
+            let uX = cos(snapAngle)
+            let uY = sin(snapAngle)
+            
+            let projection = dx * uX + dy * uY
+            
+            // Note: Moving start point "Right" (positive dx) effectively shortens the line if end is to the right.
+            // But here we just want to move the point in space.
+            // If we move start point along the vector, the angle remains exactly the same.
+            
+            newPoint = CGPoint(
+                x: currentStart.x + projection * uX,
+                y: currentStart.y + projection * uY
+            )
+        } else {
+            newPoint = CGPoint(x: currentStart.x + dx, y: currentStart.y + dy)
+        }
+        
+        // Clamp to screen
+        startPoint = CGPoint(
+            x: max(0, min(newPoint.x, size.width)),
+            y: max(0, min(newPoint.y, size.height))
+        )
+    }
+}
+
+// This view is now for the overlay, not a window
+struct RulerOverlayView: View {
+    @ObservedObject var controller: RulerViewController
+    @State private var isShiftPressed = false
+    
+    init(controller: RulerViewController) {
+        self.controller = controller
+    }
+    
+    func getEndPoint(in size: CGSize) -> CGPoint? {
+        controller.getEffectiveEndPoint(in: size, isShiftPressed: isShiftPressed)
+    }
 
     func getDistance(from start: CGPoint, to end: CGPoint) -> CGFloat {
         let dx = end.x - start.x
@@ -96,7 +206,13 @@ struct RulerOverlayView: View {
     func getAngle(from start: CGPoint, to end: CGPoint) -> CGFloat {
         let dx = end.x - start.x
         let dy = end.y - start.y
-        var degrees = atan2(dy, dx) * 180 / .pi
+        // In screen coordinates, Y increases downwards.
+        // Standard math: 0 is Right, 90 is Up, 180 is Left, 270 is Down.
+        // Screen coords: 0 is Right, 90 is Down (positive Y), etc.
+        // To match standard protractor feel (0 Right, 90 Up/Top):
+        // We invert Y for the calculation.
+        
+        var degrees = atan2(-dy, dx) * 180 / .pi
         if degrees < 0 { degrees += 360 }
         return degrees
     }
@@ -110,7 +226,7 @@ struct RulerOverlayView: View {
     }
     
     func convert(_ value: CGFloat) -> CGFloat {
-        let unit = controller?.units ?? .pixels
+        let unit = controller.units
         switch unit {
         case .pixels:
             return value
@@ -126,11 +242,33 @@ struct RulerOverlayView: View {
     }
     
     var unitString: String {
-        controller?.units.rawValue ?? "px"
+        controller.units.rawValue
     }
     
     func getMidPoint(from start: CGPoint, to end: CGPoint) -> CGPoint {
         return CGPoint(x: (start.x + end.x) / 2, y: (start.y + end.y) / 2)
+    }
+    
+    func getInfoBoxPosition(midPoint: CGPoint, in size: CGSize) -> CGPoint {
+        let boxWidth: CGFloat = 140
+        let boxHeight: CGFloat = 110
+        let padding: CGFloat = 10
+        
+        var position = CGPoint(x: midPoint.x, y: midPoint.y - 60)
+        
+        // Check if top is cut off
+        if position.y - boxHeight/2 < padding {
+            // Move below the midpoint
+            position.y = midPoint.y + 60
+        }
+        
+        // Clamp X to be within screen
+        position.x = max(boxWidth/2 + padding, min(position.x, size.width - boxWidth/2 - padding))
+        
+        // Clamp Y to be within screen
+        position.y = max(boxHeight/2 + padding, min(position.y, size.height - boxHeight/2 - padding))
+        
+        return position
     }
     
     var body: some View {
@@ -145,23 +283,30 @@ struct RulerOverlayView: View {
                     .gesture(
                         DragGesture(minimumDistance: 0)
                             .onChanged { value in
-                                if !isDrawing {
-                                    startPoint = clampPoint(value.startLocation, to: geometry.size)
-                                    isDrawing = true
+                                if !controller.isDrawing {
+                                    controller.startPoint = clampPoint(value.startLocation, to: geometry.size)
+                                    controller.isDrawing = true
                                 }
-                                endPoint = clampPoint(value.location, to: geometry.size)
+                                controller.endPoint = clampPoint(value.location, to: geometry.size)
                             }
                             .onEnded { _ in
-                                isDrawing = false
+                                controller.isDrawing = false
                             }
                     )
                 
                 // Instructions when not drawing
-                if startPoint == nil {
+                if controller.startPoint == nil {
                     VStack {
                         Text("Click and drag to measure")
-                        Text("Hold Shift to snap to 45° angles")
+                        Text("Hold Shift to snap to \(Int(controller.snapIncrement))° angles")
                             .font(.caption)
+                            .foregroundColor(.secondary)
+                        Text("Use Arrow keys to fine-tune (Hold ⌥ for 10px)")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                            .padding(.top, 2)
+                        Text("Press Space to switch active point")
+                            .font(.caption2)
                             .foregroundColor(.secondary)
                     }
                     .padding()
@@ -170,7 +315,7 @@ struct RulerOverlayView: View {
                 }
                 
                 // Only draw ruler if we have both points
-                if let start = startPoint, let end = currentEndPoint {
+                if let start = controller.startPoint, let end = currentEndPoint {
                     // Triangle lines (Delta X/Y)
                     Path { path in
                         path.move(to: start)
@@ -197,7 +342,7 @@ struct RulerOverlayView: View {
                     Circle()
                         .fill(Color.blue)
                         .frame(width: 10, height: 10)
-                        .overlay(Circle().stroke(Color.white, lineWidth: 2))
+                        .overlay(Circle().stroke(controller.activePoint == .start ? Color.yellow : Color.white, lineWidth: controller.activePoint == .start ? 3 : 2))
                         .position(start)
                         .shadow(color: .black.opacity(0.5), radius: 3, x: 0, y: 1)
                     
@@ -205,7 +350,7 @@ struct RulerOverlayView: View {
                     Circle()
                         .fill(Color.red)
                         .frame(width: 10, height: 10)
-                        .overlay(Circle().stroke(Color.white, lineWidth: 2))
+                        .overlay(Circle().stroke(controller.activePoint == .end ? Color.yellow : Color.white, lineWidth: controller.activePoint == .end ? 3 : 2))
                         .position(end)
                         .shadow(color: .black.opacity(0.5), radius: 3, x: 0, y: 1)
                     
@@ -252,7 +397,7 @@ struct RulerOverlayView: View {
                             .fill(Color.black.opacity(0.75))
                             .shadow(color: .black.opacity(0.4), radius: 4, x: 0, y: 2)
                     )
-                    .position(x: midPoint.x, y: midPoint.y - 60)
+                    .position(getInfoBoxPosition(midPoint: midPoint, in: geometry.size))
                 }
             }
         }

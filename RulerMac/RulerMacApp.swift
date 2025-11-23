@@ -22,6 +22,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var overlayWindow: NSWindow!
     var statusItem: NSStatusItem!
     var rulerViewController: RulerViewController!
+    var accelerationFactor: CGFloat = 1.0
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Hide from dock, show only in menu bar
@@ -59,6 +60,32 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         unitsMenuItem.submenu = unitsMenu
         menu.addItem(unitsMenuItem)
         
+        // Angle Snap submenu
+        let angleMenu = NSMenu()
+        let angle45Item = NSMenuItem(title: "45° (Default)", action: #selector(setSnapAngle45), keyEquivalent: "")
+        let angle30Item = NSMenuItem(title: "30°", action: #selector(setSnapAngle30), keyEquivalent: "")
+        let angle15Item = NSMenuItem(title: "15°", action: #selector(setSnapAngle15), keyEquivalent: "")
+        let angle10Item = NSMenuItem(title: "10°", action: #selector(setSnapAngle10), keyEquivalent: "")
+        let angle5Item = NSMenuItem(title: "5°", action: #selector(setSnapAngle5), keyEquivalent: "")
+        
+        angle45Item.target = self
+        angle30Item.target = self
+        angle15Item.target = self
+        angle10Item.target = self
+        angle5Item.target = self
+        
+        angle45Item.state = .on
+        
+        angleMenu.addItem(angle45Item)
+        angleMenu.addItem(angle30Item)
+        angleMenu.addItem(angle15Item)
+        angleMenu.addItem(angle10Item)
+        angleMenu.addItem(angle5Item)
+        
+        let angleMenuItem = NSMenuItem(title: "Snap Angle", action: nil, keyEquivalent: "")
+        angleMenuItem.submenu = angleMenu
+        menu.addItem(angleMenuItem)
+        
         menu.addItem(NSMenuItem.separator())
         menu.addItem(NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: ""))
         statusItem.menu = menu
@@ -77,7 +104,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         overlayWindow.isOpaque = false
         overlayWindow.backgroundColor = .clear
-        overlayWindow.level = .floating
+        overlayWindow.level = .screenSaver
         overlayWindow.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]
         overlayWindow.ignoresMouseEvents = false
         overlayWindow.isMovable = false
@@ -89,15 +116,67 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         // Create the SwiftUI view with controller
         rulerViewController = RulerViewController()
-        let hostingView = NSHostingView(rootView: rulerViewController.rulerView)
+        let rulerView = RulerOverlayView(controller: rulerViewController)
+        let hostingView = NSHostingView(rootView: rulerView)
         overlayWindow.contentView = hostingView
         
-        // Set up key monitor for Esc key
+        // Set up key monitor for Esc key and Arrow keys
         NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self = self else { return event }
+            
             if event.keyCode == 53 { // Esc key
-                self?.toggleRuler()
+                self.toggleRuler()
                 return nil
             }
+            
+            // Space key to toggle active point
+            if event.keyCode == 49 {
+                if self.overlayWindow.isVisible && self.rulerViewController.endPoint != nil {
+                    self.rulerViewController.toggleActivePoint()
+                    return nil
+                }
+            }
+            
+            // Arrow keys for nudging
+            // Left: 123, Right: 124, Down: 125, Up: 126
+            if self.overlayWindow.isVisible && self.rulerViewController.endPoint != nil {
+                var dx: CGFloat = 0
+                var dy: CGFloat = 0
+                
+                switch event.keyCode {
+                case 123: dx = -1 // Left
+                case 124: dx = 1  // Right
+                case 125: dy = 1  // Down
+                case 126: dy = -1 // Up
+                default: return event
+                }
+                
+                // Apply multiplier if Option is held
+                var step: CGFloat = 1.0
+                
+                if event.modifierFlags.contains(.option) {
+                    if event.isARepeat {
+                        self.accelerationFactor = min(self.accelerationFactor + 0.5, 10.0)
+                    } else {
+                        self.accelerationFactor = 1.0
+                    }
+                    step = 10.0 * self.accelerationFactor
+                } else {
+                    self.accelerationFactor = 1.0
+                }
+                
+                dx *= step
+                dy *= step
+                
+                if self.rulerViewController.activePoint == .start {
+                    self.rulerViewController.nudgeStartPoint(dx: dx, dy: dy, in: self.overlayWindow.frame.size, isShiftPressed: event.modifierFlags.contains(.shift))
+                } else {
+                    self.rulerViewController.nudgeEndPoint(dx: dx, dy: dy, in: self.overlayWindow.frame.size, isShiftPressed: event.modifierFlags.contains(.shift))
+                }
+                
+                return nil // Consume event
+            }
+            
             return event
         }
         
@@ -125,6 +204,41 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func setUnitCentimeters() {
         rulerViewController.setUnit(.centimeters)
         updateMenuCheckmarks(selected: 2)
+    }
+    
+    @objc func setSnapAngle45() {
+        rulerViewController.setSnapIncrement(45)
+        updateAngleMenuCheckmarks(selected: 0)
+    }
+    
+    @objc func setSnapAngle30() {
+        rulerViewController.setSnapIncrement(30)
+        updateAngleMenuCheckmarks(selected: 1)
+    }
+    
+    @objc func setSnapAngle15() {
+        rulerViewController.setSnapIncrement(15)
+        updateAngleMenuCheckmarks(selected: 2)
+    }
+    
+    @objc func setSnapAngle10() {
+        rulerViewController.setSnapIncrement(10)
+        updateAngleMenuCheckmarks(selected: 3)
+    }
+    
+    @objc func setSnapAngle5() {
+        rulerViewController.setSnapIncrement(5)
+        updateAngleMenuCheckmarks(selected: 4)
+    }
+    
+    func updateAngleMenuCheckmarks(selected: Int) {
+        guard let menu = statusItem.menu,
+              let angleMenuItem = menu.item(withTitle: "Snap Angle"),
+              let angleMenu = angleMenuItem.submenu else { return }
+        
+        for (index, item) in angleMenu.items.enumerated() {
+            item.state = (index == selected) ? .on : .off
+        }
     }
     
     func updateMenuCheckmarks(selected: Int) {

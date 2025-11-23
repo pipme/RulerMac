@@ -9,7 +9,9 @@ A lightweight macOS screen ruler application for measuring distances on your scr
 - 📏 Measure screen distances in **any direction**
 - 🎯 Real-time distance and angle display
 - 📐 **Detailed Measurements**: View Distance, Angle, ΔX (width), and ΔY (height)
-- 🔒 **Angle Snapping**: Hold `Shift` to snap to 45° increments (horizontal, vertical, diagonal)
+- 🔒 **Angle Snapping**: Hold `Shift` to snap to angles (Default 45°, configurable to 30°, 15°, 10°, 5°)
+- ⌨️ **Fine-tuning**: Use **Arrow Keys** to nudge the active point by 1px (Hold `Option` (⌥) for 10px, accelerates when held)
+- 📍 **Switch Active Point**: Press **Space** to toggle between adjusting the Start Point and End Point
 - 📏 Multiple unit support: pixels, inches, and centimeters
 - 🖥️ Menu bar integration for easy access
 - ⌨️ ESC key to show/hide measurement overlay
@@ -29,6 +31,8 @@ A lightweight macOS screen ruler application for measuring distances on your scr
 1. Launch RulerMac - you'll see a ruler icon in your menu bar
 2. Click and drag anywhere on the screen to measure
    - **Hold Shift** while dragging to snap to 0°, 45°, 90°, etc.
+   - **Use Arrow Keys** to fine-tune the active point position (Option + Arrow for larger steps)
+   - **Press Space** to switch between adjusting the Start Point and End Point
 3. Press **ESC** to hide the measurement overlay
 4. Click the menu bar icon to access options:
    - Show/Hide Ruler
@@ -39,6 +43,7 @@ A lightweight macOS screen ruler application for measuring distances on your scr
 
 - **Show Ruler** / **Hide Ruler**: Toggle the measurement overlay
 - **Units**: Switch between pixels, inches, and centimeters
+- **Snap Angle**: Choose the angle increment for snapping (45°, 30°, 15°, 10°, 5°)
 - **Quit**: Exit the application
 
 ## Building from Source
