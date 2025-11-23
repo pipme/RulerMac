@@ -34,50 +34,109 @@ struct RulerOverlayView: View {
     @State private var startPoint: CGPoint?
     @State private var endPoint: CGPoint?
     @State private var isDrawing = false
+    @State private var isShiftPressed = false
     weak var controller: RulerViewController?
     
     init(controller: RulerViewController?) {
         self.controller = controller
     }
     
-    var distance: CGFloat {
-        guard let start = startPoint, let end = endPoint else { return 0 }
+    func getEndPoint(in size: CGSize) -> CGPoint? {
+        guard let start = startPoint, let end = endPoint else { return nil }
+        
+        if isShiftPressed {
+            let dx = end.x - start.x
+            let dy = end.y - start.y
+            let angle = atan2(dy, dx)
+            
+            // Snap to 45 degree increments (pi/4)
+            let snapAngle = round(angle / (.pi / 4)) * (.pi / 4)
+            let rawDistance = sqrt(dx*dx + dy*dy)
+            
+            // Calculate intersection with bounds to maintain angle
+            let cosA = cos(snapAngle)
+            let sinA = sin(snapAngle)
+            
+            var tLimit = CGFloat.infinity
+            
+            // Check X bounds
+            if abs(cosA) > 0.001 {
+                if cosA > 0 {
+                    tLimit = min(tLimit, (size.width - start.x) / cosA)
+                } else {
+                    tLimit = min(tLimit, (0 - start.x) / cosA)
+                }
+            }
+            
+            // Check Y bounds
+            if abs(sinA) > 0.001 {
+                if sinA > 0 {
+                    tLimit = min(tLimit, (size.height - start.y) / sinA)
+                } else {
+                    tLimit = min(tLimit, (0 - start.y) / sinA)
+                }
+            }
+            
+            let distance = min(rawDistance, tLimit)
+            
+            return CGPoint(
+                x: start.x + distance * cosA,
+                y: start.y + distance * sinA
+            )
+        }
+        return end
+    }
+
+    func getDistance(from start: CGPoint, to end: CGPoint) -> CGFloat {
         let dx = end.x - start.x
         let dy = end.y - start.y
         return sqrt(dx * dx + dy * dy)
     }
     
-    var angle: CGFloat {
-        guard let start = startPoint, let end = endPoint else { return 0 }
+    func getAngle(from start: CGPoint, to end: CGPoint) -> CGFloat {
         let dx = end.x - start.x
         let dy = end.y - start.y
-        let radians = atan2(dy, dx)
-        return radians * 180 / .pi
+        var degrees = atan2(dy, dx) * 180 / .pi
+        if degrees < 0 { degrees += 360 }
+        return degrees
     }
     
-    var convertedDistance: CGFloat {
+    func getDeltaX(from start: CGPoint, to end: CGPoint) -> CGFloat {
+        return abs(end.x - start.x)
+    }
+    
+    func getDeltaY(from start: CGPoint, to end: CGPoint) -> CGFloat {
+        return abs(end.y - start.y)
+    }
+    
+    func convert(_ value: CGFloat) -> CGFloat {
         let unit = controller?.units ?? .pixels
         switch unit {
         case .pixels:
-            return distance
+            return value
         case .inches:
-            return distance / 72.0
+            return value / 72.0
         case .centimeters:
-            return distance / 28.346
+            return value / 28.346
         }
+    }
+    
+    func getConvertedDistance(from start: CGPoint, to end: CGPoint) -> CGFloat {
+        convert(getDistance(from: start, to: end))
     }
     
     var unitString: String {
         controller?.units.rawValue ?? "px"
     }
     
-    var midPoint: CGPoint {
-        guard let start = startPoint, let end = endPoint else { return .zero }
+    func getMidPoint(from start: CGPoint, to end: CGPoint) -> CGPoint {
         return CGPoint(x: (start.x + end.x) / 2, y: (start.y + end.y) / 2)
     }
     
     var body: some View {
         GeometryReader { geometry in
+            let currentEndPoint = getEndPoint(in: geometry.size)
+            
             ZStack {
                 // Transparent background that captures mouse events
                 Color.clear
@@ -97,8 +156,30 @@ struct RulerOverlayView: View {
                             }
                     )
                 
+                // Instructions when not drawing
+                if startPoint == nil {
+                    VStack {
+                        Text("Click and drag to measure")
+                        Text("Hold Shift to snap to 45° angles")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding()
+                    .background(.ultraThinMaterial)
+                    .cornerRadius(10)
+                }
+                
                 // Only draw ruler if we have both points
-                if let start = startPoint, let end = endPoint {
+                if let start = startPoint, let end = currentEndPoint {
+                    // Triangle lines (Delta X/Y)
+                    Path { path in
+                        path.move(to: start)
+                        path.addLine(to: CGPoint(x: end.x, y: start.y))
+                        path.addLine(to: end)
+                    }
+                    .stroke(Color.white, style: StrokeStyle(lineWidth: 1, dash: [5]))
+                    .shadow(color: .black, radius: 1)
+                    
                     // Main ruler line
                     Path { path in
                         path.move(to: start)
@@ -129,26 +210,59 @@ struct RulerOverlayView: View {
                         .shadow(color: .black.opacity(0.5), radius: 3, x: 0, y: 1)
                     
                     // Measurement label at midpoint
-                    VStack(spacing: 2) {
-                        Text(String(format: "%.1f %@", convertedDistance, unitString))
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(.white)
-                        Text(String(format: "%.1f°", angle))
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(.white.opacity(0.9))
+                    let midPoint = getMidPoint(from: start, to: end)
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text("Dist:")
+                                .fontWeight(.medium)
+                            Spacer()
+                            Text(String(format: "%.1f %@", getConvertedDistance(from: start, to: end), unitString))
+                                .fontWeight(.bold)
+                        }
+                        
+                        HStack {
+                            Text("Angle:")
+                                .fontWeight(.medium)
+                            Spacer()
+                            Text(String(format: "%.1f°", getAngle(from: start, to: end)))
+                        }
+                        
+                        Divider().background(Color.white.opacity(0.5))
+                        
+                        HStack {
+                            Text("ΔX:")
+                            Spacer()
+                            Text(String(format: "%.1f", convert(getDeltaX(from: start, to: end))))
+                        }
+                        .font(.caption)
+                        
+                        HStack {
+                            Text("ΔY:")
+                            Spacer()
+                            Text(String(format: "%.1f", convert(getDeltaY(from: start, to: end))))
+                        }
+                        .font(.caption)
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
+                    .font(.system(size: 12))
+                    .foregroundColor(.white)
+                    .padding(8)
+                    .frame(width: 140)
                     .background(
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(Color.blue.opacity(0.9))
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color.black.opacity(0.75))
                             .shadow(color: .black.opacity(0.4), radius: 4, x: 0, y: 2)
                     )
-                    .position(x: midPoint.x, y: midPoint.y - 30)
+                    .position(x: midPoint.x, y: midPoint.y - 60)
                 }
             }
         }
         .ignoresSafeArea()
+        .onAppear {
+            NSEvent.addLocalMonitorForEvents(matching: [.flagsChanged]) { event in
+                self.isShiftPressed = event.modifierFlags.contains(.shift)
+                return event
+            }
+        }
     }
     
     private func clampPoint(_ point: CGPoint, to size: CGSize) -> CGPoint {

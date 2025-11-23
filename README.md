@@ -8,10 +8,12 @@ A lightweight macOS screen ruler application for measuring distances on your scr
 
 - 📏 Measure screen distances in **any direction**
 - 🎯 Real-time distance and angle display
-- 📐 Multiple unit support: pixels, inches, and centimeters
+- 📐 **Detailed Measurements**: View Distance, Angle, ΔX (width), and ΔY (height)
+- 🔒 **Angle Snapping**: Hold `Shift` to snap to 45° increments (horizontal, vertical, diagonal)
+- 📏 Multiple unit support: pixels, inches, and centimeters
 - 🖥️ Menu bar integration for easy access
 - ⌨️ ESC key to show/hide measurement overlay
-- 🎨 Clean, minimal interface
+- 🎨 Clean, minimal interface with high-contrast visibility
 
 ## Installation
 
@@ -26,6 +28,7 @@ A lightweight macOS screen ruler application for measuring distances on your scr
 
 1. Launch RulerMac - you'll see a ruler icon in your menu bar
 2. Click and drag anywhere on the screen to measure
+   - **Hold Shift** while dragging to snap to 0°, 45°, 90°, etc.
 3. Press **ESC** to hide the measurement overlay
 4. Click the menu bar icon to access options:
    - Show/Hide Ruler

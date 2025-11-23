@@ -83,6 +83,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         overlayWindow.isMovable = false
         overlayWindow.hasShadow = false
         
+        // Set cursor
+        let cursor = NSCursor.crosshair
+        overlayWindow.contentView?.addCursorRect(overlayWindow.contentView!.bounds, cursor: cursor)
+        
         // Create the SwiftUI view with controller
         rulerViewController = RulerViewController()
         let hostingView = NSHostingView(rootView: rulerViewController.rulerView)
