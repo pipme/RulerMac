@@ -191,7 +191,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func toggleTurntable() {
         rulerViewController.toggleAngleDial()
         
-        if rulerViewController.showAngleDial && !overlayWindow.isVisible {
+        if !overlayWindow.isVisible {
             overlayWindow.orderFrontRegardless()
         }
         

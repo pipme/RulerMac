@@ -352,7 +352,9 @@ struct RulerOverlayView: View {
             ZStack {
                 Color.clear
                     .onAppear { viewSize = geometry.size }
-                    .onChange(of: geometry.size) { viewSize = $0 }
+                    .onChange(of: geometry.size) { oldSize, newSize in
+                        viewSize = newSize
+                    }
                 
                 Color.clear
                     .contentShape(Rectangle())
