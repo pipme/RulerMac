@@ -98,37 +98,44 @@ class RulerViewController: ObservableObject {
         var newPoint: CGPoint
         
         if isShiftPressed {
-            // Constrained Nudge: Move only along the snapped line
-            let vectorX = currentEnd.x - start.x
-            let vectorY = currentEnd.y - start.y
-            let angle = atan2(vectorY, vectorX)
+            // Calculate snapped angle from Start to End
+            let dxRaw = currentEnd.x - start.x
+            let dyRaw = currentEnd.y - start.y
+            let angle = atan2(dyRaw, dxRaw)
             
             let incrementRad = CGFloat(snapIncrement) * .pi / 180.0
             let snapAngle = round(angle / incrementRad) * incrementRad
             
-            // Unit vector for the snapped angle
             let uX = cos(snapAngle)
             let uY = sin(snapAngle)
             
+            // Use current length but apply to snapped direction
+            let currentLength = sqrt(dxRaw * dxRaw + dyRaw * dyRaw)
+            
             // Project the input nudge (dx, dy) onto the unit vector
             let projection = dx * uX + dy * uY
-            let moveAmount = projection
             
-            // Apply movement along the snapped vector
+            // Calculate new length
+            let newLength = currentLength + projection
+            
+            // Calculate new point on the snapped line
             newPoint = CGPoint(
-                x: currentEnd.x + moveAmount * uX,
-                y: currentEnd.y + moveAmount * uY
+                x: start.x + newLength * uX,
+                y: start.y + newLength * uY
             )
+            
+            // Clamp with angle preservation
+            endPoint = clampPointToScreen(newPoint, anchor: start, size: size)
         } else {
             // Free Nudge
             newPoint = CGPoint(x: currentEnd.x + dx, y: currentEnd.y + dy)
+            
+            // Standard clamp
+            endPoint = CGPoint(
+                x: max(0, min(newPoint.x, size.width)),
+                y: max(0, min(newPoint.y, size.height))
+            )
         }
-        
-        // Clamp to screen
-        endPoint = CGPoint(
-            x: max(0, min(newPoint.x, size.width)),
-            y: max(0, min(newPoint.y, size.height))
-        )
     }
     
     func nudgeStartPoint(dx: CGFloat, dy: CGFloat, in size: CGSize, isShiftPressed: Bool) {
@@ -137,10 +144,10 @@ class RulerViewController: ObservableObject {
         var newPoint: CGPoint
         
         if isShiftPressed {
-            // Constrained Nudge for Start Point
-            let vectorX = end.x - currentStart.x
-            let vectorY = end.y - currentStart.y
-            let angle = atan2(vectorY, vectorX)
+            // Calculate snapped angle from Start to End
+            let dxRaw = end.x - currentStart.x
+            let dyRaw = end.y - currentStart.y
+            let angle = atan2(dyRaw, dxRaw)
             
             let incrementRad = CGFloat(snapIncrement) * .pi / 180.0
             let snapAngle = round(angle / incrementRad) * incrementRad
@@ -148,20 +155,109 @@ class RulerViewController: ObservableObject {
             let uX = cos(snapAngle)
             let uY = sin(snapAngle)
             
+            // Use current length
+            let currentLength = sqrt(dxRaw * dxRaw + dyRaw * dyRaw)
+            
+            // Project the input nudge
             let projection = dx * uX + dy * uY
             
+            // Calculate new length (moving start towards end shortens the line)
+            let newLength = currentLength - projection
+            
+            // Calculate new point on the snapped line relative to End
+            // Start = End - Length * Vector
             newPoint = CGPoint(
-                x: currentStart.x + projection * uX,
-                y: currentStart.y + projection * uY
+                x: end.x - newLength * uX,
+                y: end.y - newLength * uY
             )
+            
+            // Clamp with angle preservation
+            startPoint = clampPointToScreen(newPoint, anchor: end, size: size)
         } else {
             newPoint = CGPoint(x: currentStart.x + dx, y: currentStart.y + dy)
+            
+            // Standard clamp
+            startPoint = CGPoint(
+                x: max(0, min(newPoint.x, size.width)),
+                y: max(0, min(newPoint.y, size.height))
+            )
+        }
+    }
+    
+    private func clampPointToScreen(_ point: CGPoint, anchor: CGPoint, size: CGSize) -> CGPoint {
+        // 1. If point is inside, return it.
+        if point.x >= 0 && point.x <= size.width && 
+           point.y >= 0 && point.y <= size.height {
+            return point
         }
         
-        // Clamp to screen
-        startPoint = CGPoint(
-            x: max(0, min(newPoint.x, size.width)),
-            y: max(0, min(newPoint.y, size.height))
+        // 2. Calculate intersection t
+        let dx = point.x - anchor.x
+        let dy = point.y - anchor.y
+        var t: CGFloat = 1.0
+        
+        // Track which bound limited us
+        var hitX = false
+        var hitY = false
+        
+        // Check Right Bound (x = width)
+        if dx > 0 {
+            let tX = (size.width - anchor.x) / dx
+            if tX < t {
+                t = tX
+                hitX = true
+                hitY = false
+            }
+        }
+        // Check Left Bound (x = 0)
+        else if dx < 0 {
+            let tX = (0 - anchor.x) / dx
+            if tX < t {
+                t = tX
+                hitX = true
+                hitY = false
+            }
+        }
+        
+        // Check Bottom Bound (y = height)
+        if dy > 0 {
+            let tY = (size.height - anchor.y) / dy
+            if tY < t {
+                t = tY
+                hitY = true
+                hitX = false
+            } else if abs(tY - t) < 0.00001 && hitX {
+                hitY = true // Corner hit
+            }
+        }
+        // Check Top Bound (y = 0)
+        else if dy < 0 {
+            let tY = (0 - anchor.y) / dy
+            if tY < t {
+                t = tY
+                hitY = true
+                hitX = false
+            } else if abs(tY - t) < 0.00001 && hitX {
+                hitY = true
+            }
+        }
+        
+        // 3. Calculate intersection point
+        var intersection = CGPoint(x: anchor.x + t * dx, y: anchor.y + t * dy)
+        
+        // 4. Snap to bounds if we hit them
+        // This fixes the "stops before edge" issue due to floating point precision
+        if hitX {
+            intersection.x = (dx > 0) ? size.width : 0
+        }
+        if hitY {
+            intersection.y = (dy > 0) ? size.height : 0
+        }
+        
+        // 5. Hard clamp as final safety
+        return CGPoint(
+            x: max(0, min(intersection.x, size.width)),
+            y: max(0, min(intersection.y, size.height))
         )
     }
 }
@@ -170,6 +266,7 @@ class RulerViewController: ObservableObject {
 struct RulerOverlayView: View {
     @ObservedObject var controller: RulerViewController
     @State private var isShiftPressed = false
+    @State private var viewSize: CGSize = .zero
     
     init(controller: RulerViewController) {
         self.controller = controller
@@ -253,6 +350,10 @@ struct RulerOverlayView: View {
             let currentEndPoint = getEndPoint(in: geometry.size)
             
             ZStack {
+                Color.clear
+                    .onAppear { viewSize = geometry.size }
+                    .onChange(of: geometry.size) { viewSize = $0 }
+                
                 Color.clear
                     .contentShape(Rectangle())
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -394,7 +495,17 @@ struct RulerOverlayView: View {
         .ignoresSafeArea()
         .onAppear {
             NSEvent.addLocalMonitorForEvents(matching: [.flagsChanged]) { event in
-                self.isShiftPressed = event.modifierFlags.contains(.shift)
+                let newShiftState = event.modifierFlags.contains(.shift)
+                
+                // If Shift is released (transition from true to false)
+                if self.isShiftPressed && !newShiftState {
+                    // Commit the snapped position
+                    if let snappedPoint = self.controller.getEffectiveEndPoint(in: self.viewSize, isShiftPressed: true) {
+                        self.controller.endPoint = snappedPoint
+                    }
+                }
+                
+                self.isShiftPressed = newShiftState
                 return event
             }
         }
