@@ -28,6 +28,7 @@ class RulerViewController: ObservableObject {
     @Published var activePoint: ActivePoint = .end
     @Published var snapIncrement: Double = 45.0
     @Published var showAngleDial: Bool = false
+    @Published var isActive: Bool = false
     
     func setUnit(_ unit: MeasurementUnit) {
         units = unit
@@ -280,6 +281,7 @@ class RulerViewController: ObservableObject {
 // This view is now for the overlay, not a window
 struct RulerOverlayView: View {
     @ObservedObject var controller: RulerViewController
+    
     @State private var isShiftPressed = false
     @State private var viewSize: CGSize = .zero
     
@@ -389,122 +391,124 @@ struct RulerOverlayView: View {
                             }
                     )
                 
-                if controller.startPoint == nil {
-                    VStack {
-                        Text("Click and drag to measure")
-                        Text("Hold Shift to snap to \(Int(controller.snapIncrement))° angles")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        Text("Use Arrow keys to fine-tune (Hold ⌥ for 10px)")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                            .padding(.top, 2)
-                        Text("Press Space to switch active point")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                    }
-                    .padding()
-                    .background(.ultraThinMaterial)
-                    .cornerRadius(10)
-                }
-                
-                if let start = controller.startPoint, let end = currentEndPoint {
-                    Path { path in
-                        path.move(to: start)
-                        path.addLine(to: CGPoint(x: end.x, y: start.y))
-                        path.addLine(to: end)
-                    }
-                    .stroke(Color.white, style: StrokeStyle(lineWidth: 1, dash: [5]))
-                    .shadow(color: .black, radius: 1)
-                    
-                    Path { path in
-                        path.move(to: start)
-                        path.addLine(to: end)
-                    }
-                    .stroke(Color.blue, lineWidth: 3)
-                    .shadow(color: .black.opacity(0.5), radius: 3, x: 0, y: 2)
-                    
-                    TickMarks(startPoint: start, endPoint: end)
-                        .stroke(Color.blue, lineWidth: 1.5)
-                        .shadow(color: .black.opacity(0.3), radius: 1, x: 0, y: 1)
-                    
-                    Circle()
-                        .fill(Color.blue)
-                        .frame(width: 10, height: 10)
-                        .overlay(Circle().stroke(controller.activePoint == .start ? Color.yellow : Color.white, lineWidth: controller.activePoint == .start ? 3 : 2))
-                        .position(start)
-                        .shadow(color: .black.opacity(0.5), radius: 3, x: 0, y: 1)
-                    
-                    Circle()
-                        .fill(Color.red)
-                        .frame(width: 10, height: 10)
-                        .overlay(Circle().stroke(controller.activePoint == .end ? Color.yellow : Color.white, lineWidth: controller.activePoint == .end ? 3 : 2))
-                        .position(end)
-                        .shadow(color: .black.opacity(0.5), radius: 3, x: 0, y: 1)
-                    
-                    let midPoint = getMidPoint(from: start, to: end)
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            Text("Dist:")
-                                .fontWeight(.medium)
-                            Spacer()
-                            Text(String(format: "%.1f %@", getConvertedDistance(from: start, to: end), unitString))
-                                .fontWeight(.bold)
+                if controller.isActive {
+                    if controller.startPoint == nil {
+                        VStack {
+                            Text("Click and drag to measure")
+                            Text("Hold Shift to snap to \(Int(controller.snapIncrement))° angles")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Text("Use Arrow keys to fine-tune (Hold ⌥ for 10px)")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                                .padding(.top, 2)
+                            Text("Press Space to switch active point")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
                         }
-                        
-                        HStack {
-                            Text("Angle:")
-                                .fontWeight(.medium)
-                            Spacer()
-                            Text(String(format: "%.1f°", getAngle(from: start, to: end)))
-                        }
-                        
-                        Divider().background(Color.white.opacity(0.5))
-                        
-                        HStack {
-                            Text("ΔX:")
-                            Spacer()
-                            Text(String(format: "%.1f", convert(getDeltaX(from: start, to: end))))
-                        }
-                        .font(.caption)
-                        
-                        HStack {
-                            Text("ΔY:")
-                            Spacer()
-                            Text(String(format: "%.1f", convert(getDeltaY(from: start, to: end))))
-                        }
-                        .font(.caption)
+                        .padding()
+                        .background(.ultraThinMaterial)
+                        .cornerRadius(10)
                     }
-                    .font(.system(size: 12))
-                    .foregroundColor(.white)
-                    .padding(8)
-                    .frame(width: 140)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(Color.black.opacity(0.75))
-                            .shadow(color: .black.opacity(0.4), radius: 4, x: 0, y: 2)
-                    )
-                    .position(getInfoBoxPosition(midPoint: midPoint, in: geometry.size))
-                }
-                
-                if controller.showAngleDial {
-                    VStack {
-                        Spacer()
-                        HStack {
-                            Spacer()
-                            VStack(spacing: 5) {
-                                Text("Snap Angle")
-                                    .font(.caption2)
-                                    .foregroundColor(.white)
-                                    .shadow(radius: 1)
-                                SnapAngleDial(angle: $controller.snapIncrement)
-                                    .frame(width: 140, height: 70)
-                                Text("Drag knob to set")
-                                    .font(.system(size: 9))
-                                    .foregroundColor(.white.opacity(0.9))
-                                    .shadow(radius: 1)
+                    
+                    if let start = controller.startPoint, let end = currentEndPoint {
+                        Path { path in
+                            path.move(to: start)
+                            path.addLine(to: CGPoint(x: end.x, y: start.y))
+                            path.addLine(to: end)
+                        }
+                        .stroke(Color.white, style: StrokeStyle(lineWidth: 1, dash: [5]))
+                        .shadow(color: .black, radius: 1)
+                        
+                        Path { path in
+                            path.move(to: start)
+                            path.addLine(to: end)
+                        }
+                        .stroke(Color.blue, lineWidth: 3)
+                        .shadow(color: .black.opacity(0.5), radius: 3, x: 0, y: 2)
+                        
+                        TickMarks(startPoint: start, endPoint: end)
+                            .stroke(Color.blue, lineWidth: 1.5)
+                            .shadow(color: .black.opacity(0.3), radius: 1, x: 0, y: 1)
+                        
+                        Circle()
+                            .fill(Color.blue)
+                            .frame(width: 10, height: 10)
+                            .overlay(Circle().stroke(controller.activePoint == .start ? Color.yellow : Color.white, lineWidth: controller.activePoint == .start ? 3 : 2))
+                            .position(start)
+                            .shadow(color: .black.opacity(0.5), radius: 3, x: 0, y: 1)
+                        
+                        Circle()
+                            .fill(Color.red)
+                            .frame(width: 10, height: 10)
+                            .overlay(Circle().stroke(controller.activePoint == .end ? Color.yellow : Color.white, lineWidth: controller.activePoint == .end ? 3 : 2))
+                            .position(end)
+                            .shadow(color: .black.opacity(0.5), radius: 3, x: 0, y: 1)
+                        
+                        let midPoint = getMidPoint(from: start, to: end)
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text("Dist:")
+                                    .fontWeight(.medium)
+                                Spacer()
+                                Text(String(format: "%.1f %@", getConvertedDistance(from: start, to: end), unitString))
+                                    .fontWeight(.bold)
                             }
-                            .padding(20)
+                            
+                            HStack {
+                                Text("Angle:")
+                                    .fontWeight(.medium)
+                                Spacer()
+                                Text(String(format: "%.1f°", getAngle(from: start, to: end)))
+                            }
+                            
+                            Divider().background(Color.white.opacity(0.5))
+                            
+                            HStack {
+                                Text("ΔX:")
+                                Spacer()
+                                Text(String(format: "%.1f", convert(getDeltaX(from: start, to: end))))
+                            }
+                            .font(.caption)
+                            
+                            HStack {
+                                Text("ΔY:")
+                                Spacer()
+                                Text(String(format: "%.1f", convert(getDeltaY(from: start, to: end))))
+                            }
+                            .font(.caption)
+                        }
+                        .font(.system(size: 12))
+                        .foregroundColor(.white)
+                        .padding(8)
+                        .frame(width: 140)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color.black.opacity(0.75))
+                                .shadow(color: .black.opacity(0.4), radius: 4, x: 0, y: 2)
+                        )
+                        .position(getInfoBoxPosition(midPoint: midPoint, in: geometry.size))
+                    }
+                    
+                    if controller.showAngleDial {
+                        VStack {
+                            Spacer()
+                            HStack {
+                                Spacer()
+                                VStack(spacing: 5) {
+                                    Text("Snap Angle")
+                                        .font(.caption2)
+                                        .foregroundColor(.white)
+                                        .shadow(radius: 1)
+                                    SnapAngleDial(angle: $controller.snapIncrement)
+                                        .frame(width: 140, height: 70)
+                                    Text("Drag knob to set")
+                                        .font(.system(size: 9))
+                                        .foregroundColor(.white.opacity(0.9))
+                                        .shadow(radius: 1)
+                                }
+                                .padding(20)
+                            }
                         }
                     }
                 }
