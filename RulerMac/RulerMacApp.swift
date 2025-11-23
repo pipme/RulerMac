@@ -60,31 +60,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         unitsMenuItem.submenu = unitsMenu
         menu.addItem(unitsMenuItem)
         
-        // Angle Snap submenu
-        let angleMenu = NSMenu()
-        let angle45Item = NSMenuItem(title: "45° (Default)", action: #selector(setSnapAngle45), keyEquivalent: "")
-        let angle30Item = NSMenuItem(title: "30°", action: #selector(setSnapAngle30), keyEquivalent: "")
-        let angle15Item = NSMenuItem(title: "15°", action: #selector(setSnapAngle15), keyEquivalent: "")
-        let angle10Item = NSMenuItem(title: "10°", action: #selector(setSnapAngle10), keyEquivalent: "")
-        let angle5Item = NSMenuItem(title: "5°", action: #selector(setSnapAngle5), keyEquivalent: "")
-        
-        angle45Item.target = self
-        angle30Item.target = self
-        angle15Item.target = self
-        angle10Item.target = self
-        angle5Item.target = self
-        
-        angle45Item.state = .on
-        
-        angleMenu.addItem(angle45Item)
-        angleMenu.addItem(angle30Item)
-        angleMenu.addItem(angle15Item)
-        angleMenu.addItem(angle10Item)
-        angleMenu.addItem(angle5Item)
-        
-        let angleMenuItem = NSMenuItem(title: "Snap Angle", action: nil, keyEquivalent: "")
-        angleMenuItem.submenu = angleMenu
-        menu.addItem(angleMenuItem)
+        // Turntable toggle
+        let turntableItem = NSMenuItem(title: "Turntable", action: #selector(toggleTurntable), keyEquivalent: "")
+        turntableItem.target = self
+        menu.addItem(turntableItem)
         
         menu.addItem(NSMenuItem.separator())
         menu.addItem(NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: ""))
@@ -194,51 +173,35 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func setUnitPixels() {
         rulerViewController.setUnit(.pixels)
         updateMenuCheckmarks(selected: 0)
+        overlayWindow.orderFrontRegardless()
     }
     
     @objc func setUnitInches() {
         rulerViewController.setUnit(.inches)
         updateMenuCheckmarks(selected: 1)
+        overlayWindow.orderFrontRegardless()
     }
     
     @objc func setUnitCentimeters() {
         rulerViewController.setUnit(.centimeters)
         updateMenuCheckmarks(selected: 2)
+        overlayWindow.orderFrontRegardless()
     }
     
-    @objc func setSnapAngle45() {
-        rulerViewController.setSnapIncrement(45)
-        updateAngleMenuCheckmarks(selected: 0)
-    }
-    
-    @objc func setSnapAngle30() {
-        rulerViewController.setSnapIncrement(30)
-        updateAngleMenuCheckmarks(selected: 1)
-    }
-    
-    @objc func setSnapAngle15() {
-        rulerViewController.setSnapIncrement(15)
-        updateAngleMenuCheckmarks(selected: 2)
-    }
-    
-    @objc func setSnapAngle10() {
-        rulerViewController.setSnapIncrement(10)
-        updateAngleMenuCheckmarks(selected: 3)
-    }
-    
-    @objc func setSnapAngle5() {
-        rulerViewController.setSnapIncrement(5)
-        updateAngleMenuCheckmarks(selected: 4)
-    }
-    
-    func updateAngleMenuCheckmarks(selected: Int) {
-        guard let menu = statusItem.menu,
-              let angleMenuItem = menu.item(withTitle: "Snap Angle"),
-              let angleMenu = angleMenuItem.submenu else { return }
+    @objc func toggleTurntable() {
+        rulerViewController.toggleAngleDial()
         
-        for (index, item) in angleMenu.items.enumerated() {
-            item.state = (index == selected) ? .on : .off
+        if rulerViewController.showAngleDial && !overlayWindow.isVisible {
+            overlayWindow.orderFrontRegardless()
         }
+        
+        updateTurntableMenuState()
+    }
+    
+    func updateTurntableMenuState() {
+        guard let menu = statusItem.menu,
+              let item = menu.item(withTitle: "Turntable") else { return }
+        item.state = rulerViewController.showAngleDial ? .on : .off
     }
     
     func updateMenuCheckmarks(selected: Int) {
