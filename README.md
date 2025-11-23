@@ -1,50 +1,55 @@
 # RulerMac
 
-A lightweight macOS screen ruler application for measuring distances on your screen in any direction.
+A lightweight macOS screen ruler for measuring distances and angles in any direction.
 
 ![RulerMac measuring screen distance](asset/image.png)
 
 ## Features
 
-- 📏 Measure screen distances in **any direction**
-- 🎯 Real-time distance and angle display
-- 📐 **Detailed Measurements**: View Distance, Angle, ΔX (width), and ΔY (height)
-- 🔒 **Angle Snapping**: Hold `Shift` to snap to angles (Default 45°, configurable to 30°, 15°, 10°, 5°)
-- ⌨️ **Fine-tuning**: Use **Arrow Keys** to nudge the active point by 1px (Hold `Option` (⌥) for 10px, accelerates when held)
-- 📍 **Switch Active Point**: Press **Space** to toggle between adjusting the Start Point and End Point
-- 📏 Multiple unit support: pixels, inches, and centimeters
-- 🖥️ Menu bar integration for easy access
-- ⌨️ ESC key to show/hide measurement overlay
-- 🎨 Clean, minimal interface with high-contrast visibility
+- 📏 **Freeform Measurement**: Measure distances and angles in **any direction** across your screen.
+- 🎯 **Detailed Data**: Real-time display of Distance, Angle, ΔX (width), and ΔY (height).
+- 🔒 **Smart Snapping**: Hold `Shift` to snap your measurement line to specific angles.
+- 🎛️ **Turntable Control**: Use the on-screen "Turntable" dial to customize the snap angle increment (e.g., 45°, 30°, 15°).
+- ⌨️ **Keyboard Precision**:
+    - **Arrow Keys**: Nudge the active point by 1px.
+    - **Option + Arrow**: Nudge by 10px.
+    - **Shift + (Option) + Arrow**: Slide the point along the snapped angle vector (perfect for extending lines while maintaining the angle).
+    - **Acceleration**: Holding option + arrow keys accelerates movement for covering large distances quickly.
+- 📍 **Dual Point Control**: Press **Space** to toggle between adjusting the Start Point and End Point.
+- 📏 **Multi-Unit Support**: Switch between pixels (px), inches (in), and centimeters (cm).
+- 🖥️ **System Integration**: Unobtrusive menu bar app with global hotkeys.
+
 
 ## Installation
 
-1. Download the latest `RulerMac.dmg` from [Releases](https://github.com/pipme/RulerMac/releases)
-2. Open the DMG file
-3. Drag `RulerMac.app` to your Applications folder
-4. **Important**: Since the app is not signed with an Apple Developer certificate, you may need to allow it to run:
+1. Download the latest `RulerMac.dmg` from [Releases](https://github.com/pipme/RulerMac/releases).
+2. Open the DMG and drag `RulerMac.app` to your Applications folder.
+3. **Important**: Since the app is not signed with an Apple Developer certificate, you may need to allow it to run:
     - go to **System Settings** > **Privacy & Security** and click "Open Anyway"
     - Learn more about [opening apps from unidentified developers](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unknown-developer-mh40616/mac)
 
 ## Usage
 
-1. Launch RulerMac - you'll see a ruler icon in your menu bar
-2. Click and drag anywhere on the screen to measure
-   - **Hold Shift** while dragging to snap to 0°, 45°, 90°, etc.
-   - **Use Arrow Keys** to fine-tune the active point position (Option + Arrow for larger steps)
-   - **Press Space** to switch between adjusting the Start Point and End Point
-3. Press **ESC** to hide the measurement overlay
-4. Click the menu bar icon to access options:
-   - Show/Hide Ruler
-   - Change Units (px/in/cm)
-   - Quit Application
+1. **Start Measuring**: Launch the app.
+2. **Draw Line**: Click and drag anywhere on the screen.
+3. **Fine-Tune**:
+   - **Arrow Keys**: Move the active point pixel-by-pixel.
+   - **Space**: Switch control between the Start (Green) and End (Red) points.
+   - **Shift + Arrow**: Extend or retract the line while locking the angle.
 
-### Menu Options
+4. **Configure Snapping**:
+   - Enable "Turntable" from the menu bar.
+   - Drag the on-screen dial to set your preferred snap increment (e.g., set to 45° to snap to 0°, 45°, 90°...).
+5. **Dismiss**: Press **ESC** to hide the overlay; reopen by pressing **Esc** again or clicking the menu bar icon and select "Show/Hide Ruler".
 
-- **Show Ruler** / **Hide Ruler**: Toggle the measurement overlay
-- **Units**: Switch between pixels, inches, and centimeters
-- **Snap Angle**: Choose the angle increment for snapping (45°, 30°, 15°, 10°, 5°)
-- **Quit**: Exit the application
+## Menu Options
+
+Click the menu bar icon to access:
+
+- **Show/Hide Ruler**: Toggle the overlay.
+- **Units**: Choose between Pixels, Inches, or Centimeters.
+- **Turntable**: Show/Hide the on-screen angle selector dial.
+- **Quit**: Exit the application.
 
 ## Building from Source
 
@@ -54,14 +59,9 @@ A lightweight macOS screen ruler application for measuring distances on your scr
    cd RulerMac
    ```
 
-2. Open the project in Xcode:
-   ```bash
-   open RulerMac.xcodeproj
-   ```
-
-3. Build and run:
-   - Press `Cmd + R` to build and run
+2. Open `RulerMac.xcodeproj` in Xcode.
+3. Build and run (`Cmd + R`).
 
 ## Contributing
 
-This was a vibe coding project. Feel free to modify and improve it!
+This project was built with "vibe coding" (AI-assisted development). Feel free to fork, modify, and improve it!

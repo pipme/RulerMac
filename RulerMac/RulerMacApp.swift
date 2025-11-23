@@ -133,15 +133,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 // Apply multiplier if Option is held
                 var step: CGFloat = 1.0
                 
-                if event.modifierFlags.contains(.option) {
-                    if event.isARepeat {
-                        self.accelerationFactor = min(self.accelerationFactor + 0.5, 10.0)
-                    } else {
-                        self.accelerationFactor = 1.0
-                    }
-                    step = 10.0 * self.accelerationFactor
+                if event.isARepeat {
+                    self.accelerationFactor = min(self.accelerationFactor + 1.5, 30.0)
                 } else {
                     self.accelerationFactor = 1.0
+                }
+                
+                if event.modifierFlags.contains(.option) {
+                    step = 10.0 * self.accelerationFactor
+                } else {
+                    step = 1.0 * self.accelerationFactor
                 }
                 
                 dx *= step
