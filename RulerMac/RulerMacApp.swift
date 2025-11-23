@@ -46,6 +46,7 @@ class RulerWindow {
         
         // Create controller and view
         controller = RulerViewController()
+        controller.pointsPerInch = screen.pointsPerInch
         let rulerView = RulerOverlayView(controller: controller)
         let hostingView = NSHostingView(rootView: rulerView)
         hostingView.sizingOptions = [.minSize, .maxSize]
@@ -54,6 +55,7 @@ class RulerWindow {
     
     func updateFrame(screen: NSScreen) {
         window.setFrame(screen.frame, display: true)
+        controller.pointsPerInch = screen.pointsPerInch
     }
 }
 
@@ -61,6 +63,15 @@ extension NSScreen {
     var displayID: CGDirectDisplayID? {
         guard let number = deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber else { return nil }
         return CGDirectDisplayID(number.uint32Value)
+    }
+    
+    var pointsPerInch: CGFloat {
+        guard let id = self.displayID else { return 72.0 }
+        let size = CGDisplayScreenSize(id) // in millimeters
+        guard size.width > 0 else { return 72.0 }
+        
+        let widthInInches = size.width / 25.4
+        return self.frame.width / widthInInches
     }
 }
 

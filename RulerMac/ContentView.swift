@@ -29,6 +29,7 @@ class RulerViewController: ObservableObject {
     @Published var snapIncrement: Double = 45.0
     @Published var showAngleDial: Bool = false
     @Published var isActive: Bool = false
+    @Published var pointsPerInch: CGFloat = 72.0
     
     func setUnit(_ unit: MeasurementUnit) {
         units = unit
@@ -323,13 +324,15 @@ struct RulerOverlayView: View {
     
     func convert(_ value: CGFloat) -> CGFloat {
         let unit = controller.units
+        let ppi = controller.pointsPerInch
+        
         switch unit {
         case .pixels:
             return value
         case .inches:
-            return value / 72.0
+            return value / ppi
         case .centimeters:
-            return value / 28.346
+            return (value / ppi) * 2.54
         }
     }
     
