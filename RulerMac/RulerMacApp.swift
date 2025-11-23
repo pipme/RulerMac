@@ -68,6 +68,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(NSMenuItem.separator())
         menu.addItem(NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: ""))
         statusItem.menu = menu
+        
+        // Listen for screen changes
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleScreenChange),
+            name: NSApplication.didChangeScreenParametersNotification,
+            object: nil
+        )
+    }
+    
+    @objc func handleScreenChange() {
+        guard let screen = NSScreen.main else { return }
+        overlayWindow.setFrame(screen.frame, display: true)
     }
     
     func setupOverlayWindow() {

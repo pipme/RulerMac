@@ -260,6 +260,21 @@ class RulerViewController: ObservableObject {
             y: max(0, min(intersection.y, size.height))
         )
     }
+    
+    func ensurePointsAreVisible(in size: CGSize) {
+        if let start = startPoint {
+            startPoint = CGPoint(
+                x: max(0, min(start.x, size.width)),
+                y: max(0, min(start.y, size.height))
+            )
+        }
+        if let end = endPoint {
+            endPoint = CGPoint(
+                x: max(0, min(end.x, size.width)),
+                y: max(0, min(end.y, size.height))
+            )
+        }
+    }
 }
 
 // This view is now for the overlay, not a window
@@ -354,6 +369,7 @@ struct RulerOverlayView: View {
                     .onAppear { viewSize = geometry.size }
                     .onChange(of: geometry.size) { oldSize, newSize in
                         viewSize = newSize
+                        controller.ensurePointsAreVisible(in: newSize)
                     }
                 
                 Color.clear
